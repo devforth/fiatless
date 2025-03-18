@@ -44,14 +44,13 @@ services:
 |--------------------------------------|------------|----------------------------------------|---------------------------------------|
 | `BITCOIN_WALLET_SEED_PHRASE`        | Bitcoin    | (Any valid seed phrase)               | `word1 word2 ... word12`             |
 | `BITCOIN_RPC_URL`                   | Bitcoin    | (Any valid RPC URL)                   | `https://mainnet.bitcoin.org`        |
-| `BITCOIN_NETWORK`                    | Bitcoin    | `mainnet`, `testnet`, `signet`, `regtest` | `mainnet`                            |
 | `BINANCE_WALLET_SEED_PHRASE`        | Binance    | (Any valid seed phrase)               | `word1 word2 ... word12`             |
 | `BINANCE_RPC_URL`                   | Binance    | (Any valid RPC URL)                   | `https://bsc-dataseed.binance.org/`  |
-| `BINANCE_NETWORK`                   | Binance    | `mainnet`, `testnet`                  | `mainnet`                            |
 | `SOLANA_WALLET_SEED_PHRASE`         | Solana     | (Any valid seed phrase)               | `word1 word2 ... word12`             |
 | `SOLANA_RPC_URL`                    | Solana     | (Any valid RPC URL)                   | `https://api.mainnet-beta.solana.com` |
-| `SOLANA_NETWORK`                    | Solana     | `mainnet-beta`, `devnet`, `testnet`   | `mainnet-beta`                       |
 | `ETHEREUM_WALLET_SEED_PHRASE`       | Ethereum   | (Any valid seed phrase)               | `word1 word2 ... word12`             |
 | `ETHEREUM_RPC_URL`                  | Ethereum   | (Any valid RPC URL)                   | `https://mainnet.infura.io/v3/...`   |
-| `ETHEREUM_NETWORK`                  | Ethereum   | `mainnet`, `goerli`, `sepolia`, `holesky` | `mainnet`                            |
+| `TRON_WALLET_SEED_PHRASE`           | Tron       | (Any valid seed phrase)               | `word1 word2 ... word12`             |
+| `TRON_RPC_URL`                      | Tron       | (Any valid RPC URL)                   | `https://api.trongrid.io`            |
+| `TRONGRID_API_KEY`                  | Tron       | (Any valid TronGrid API key)          | `your-trongrid-api-key`              |
 
