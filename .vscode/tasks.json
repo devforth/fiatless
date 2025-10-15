@@ -1,0 +1,92 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Docker Image",
+      "type": "shell",
+      "command": "docker buildx build --load --platform=linux/amd64 --tag \"devforth/fiatless:latest\" --tag \"devforth/fiatless:${input:buildVersion}\" -f application/deploy/Dockerfile .",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Push Docker Image",
+      "type": "shell",
+      "command": "docker buildx build --platform=linux/amd64 --tag \"devforth/fiatless:latest\" --tag \"devforth/fiatless:${input:buildVersion}\" --push -f application/deploy/Dockerfile .",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Run DB and Msg Broker",
+      "type": "shell",
+      "command": "docker compose -f application/deploy/local/compose.yml up db msg-broker",
+      "options": {
+        "cwd": "${workspaceFolder}",
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Run Admin App",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/application/frontend/admin-app",
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop all containers",
+      "type": "shell",
+      "command": "docker compose -f application/deploy/local/compose.yml down",
+      "options": {
+        "cwd": "${workspaceFolder}",
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Run Payment Processor",
+      "type": "shell",
+      "command": "while IFS= read -r line; do [[ $line =~ ^[^#]*= ]] && export \"$line\"; done < ../../.env && go run cmd/payment-processor/main.go",
+      "options": {
+        "cwd": "${workspaceFolder}/application/backend",
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Blockchain Processor",
+      "type": "shell",
+      "command": "while IFS= read -r line; do [[ $line =~ ^[^#]*= ]] && export \"$line\"; done < ../../.env && go run cmd/blockchain-processor/main.go",
+      "options": {
+        "cwd": "${workspaceFolder}/application/backend",
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "buildVersion",
+      "type": "promptString",
+      "default": "latest",
+      "description": "Enter the build version"
+    }
+  ]
+}

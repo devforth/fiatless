@@ -1,0 +1,284 @@
+// package transaction
+
+// import (
+// 	"context"
+// 	"crypto/ecdsa"
+// 	"fiatless/internal/models"
+// 	api_tronpb "fiatless/pkg/proto/tron/api"
+// 	core_tronpb "fiatless/pkg/proto/tron/core"
+// 	"fiatless/pkg/tron/address"
+// 	"fiatless/pkg/tron/client/grpc/utils"
+// 	common_utils "fiatless/pkg/utils"
+// 	tron_utils "fiatless/pkg/utils/tron"
+// 	"fmt"
+// 	"math/big"
+// 	"sync"
+
+// 	"github.com/ethereum/go-ethereum/accounts/abi"
+// 	"github.com/ethereum/go-ethereum/common"
+// 	"github.com/holiman/uint256"
+// 	"github.com/shopspring/decimal"
+// )
+
+// // TRC20Transaction handles TRC20 token transfers
+// type TRC20Transaction struct {
+// 	*BaseTransaction
+// 	ContractAddress *address.TronAddress
+// 	TokenDecimals   *decimal.Decimal
+// }
+
+// // NewTRC20Transaction creates a new TRC20 transaction
+// func NewTRC20Transaction(privateKey *ecdsa.PrivateKey, contractAddress *address.TronAddress, client *api_tronpb.WalletClient) *TRC20Transaction {
+// 	base := NewBaseTransaction(privateKey, client)
+// 	return &TRC20Transaction{
+// 		BaseTransaction: base,
+// 		ContractAddress: contractAddress,
+// 	}
+// }
+
+// // FetchTokenDecimals gets the number of decimals for the token
+// func (t *TRC20Transaction) FetchTokenDecimals(ctx context.Context) (decimal.Decimal, error) {
+// 	if t.TokenDecimals != nil {
+// 		return *t.TokenDecimals, nil
+// 	}
+
+// 	// function signature for "decimals()"
+// 	method := "decimals"
+// 	arguments := abi.Arguments{}
+// 	data, err := arguments.Pack()
+// 	if err != nil {
+// 		return decimal.Zero, fmt.Errorf("failed to pack arguments for decimals: %v", err)
+// 	}
+
+// 	// Add function selector
+// 	selector := common_utils.GetFunctionSelector(method + "()")
+// 	callData := append(selector, data...)
+
+// 	// Call TriggerConstantContract
+// 	result, err := t.Client.TriggerConstantContract(ctx, &core_tronpb.TriggerSmartContract{
+// 		OwnerAddress:    t.OwnerAddress.Bytes(),
+// 		ContractAddress: t.ContractAddress.Bytes(),
+// 		Data:            callData,
+// 	})
+// 	if err != nil {
+// 		return decimal.Zero, fmt.Errorf("failed to trigger constant contract for decimals: %v", err)
+// 	}
+
+// 	if len(result.ConstantResult) == 0 || len(result.ConstantResult[0]) == 0 {
+// 		return decimal.Zero, fmt.Errorf("empty result returned from decimals() call")
+// 	}
+
+// 	decimalsBigInt := big.NewInt(0).SetBytes(result.ConstantResult[0])
+// 	decimals := decimal.NewFromBigInt(decimalsBigInt, 0)
+// 	t.TokenDecimals = &decimals
+// 	return decimals, nil
+// }
+
+// // EstimateEnergy estimates the energy required for a contract call
+// func (t *TRC20Transaction) EstimateEnergy(ctx context.Context, contractData *core_tronpb.TriggerSmartContract) (int64, error) {
+// 	tx, err := t.Client.TriggerConstantContract(ctx, contractData)
+// 	if err != nil {
+// 		return 0, fmt.Errorf("failed to trigger constant contract: %v", err)
+// 	}
+
+// 	return tx.EnergyUsed, nil
+// }
+
+// // DetermineFeeLimit calculates the fee limit for a transaction
+// func (t *TRC20Transaction) DetermineFeeLimit(ctx context.Context, chainParams *utils.ChainParams, energyUsed int64) (int64, error) {
+// 	energyPrice, err := chainParams.GetChainParameter(ctx, "getEnergyFee")
+// 	if err != nil {
+// 		return 0, fmt.Errorf("failed to get energy price: %v", err)
+// 	}
+
+// 	return energyUsed * energyPrice, nil
+// }
+
+// // GetBalance gets the token balance for an address
+// func (t *TRC20Transaction) GetBalance(ctx context.Context, addr *address.TronAddress) (decimal.Decimal, error) {
+// 	method := "balanceOf"
+// 	addressType, _ := abi.NewType("address", "", nil)
+// 	arguments := abi.Arguments{
+// 		{Type: addressType},
+// 	}
+
+// 	ethAddress := common.BytesToAddress(addr.Bytes())
+// 	data, err := arguments.Pack(ethAddress)
+// 	if err != nil {
+// 		return decimal.Zero, fmt.Errorf("failed to pack arguments for balanceOf: %v", err)
+// 	}
+
+// 	selector := common_utils.GetFunctionSelector(method + "(address)")
+// 	callData := append(selector, data...)
+
+// 	result, err := t.Client.TriggerConstantContract(ctx, &core_tronpb.TriggerSmartContract{
+// 		OwnerAddress:    t.OwnerAddress.Bytes(),
+// 		ContractAddress: t.ContractAddress.Bytes(),
+// 		Data:            callData,
+// 	})
+// 	if err != nil {
+// 		return decimal.Zero, fmt.Errorf("failed to trigger constant contract for balance: %v", err)
+// 	}
+
+// 	if len(result.ConstantResult) == 0 || len(result.ConstantResult[0]) == 0 {
+// 		return decimal.Zero, nil
+// 	}
+
+// 	balanceUint256 := uint256.NewInt(0).SetBytes(result.ConstantResult[0])
+// 	balanceDec, err := decimal.NewFromString(balanceUint256.String())
+// 	if err != nil {
+// 		return decimal.Zero, fmt.Errorf("failed to convert balance from string: %v", err)
+// 	}
+
+// 	return balanceDec, nil
+// }
+
+// // Withdraw initiates a TRC20 token transfer
+// func (t *TRC20Transaction) Withdraw(ctx context.Context, toAddress *address.TronAddress, amount decimal.Decimal) (models.TronWithdrawResponse, error) {
+// 	// 1. Get token decimals and prepare amount
+// 	var wg sync.WaitGroup
+// 	var decimals decimal.Decimal
+// 	var decimalsErr error
+// 	var balance decimal.Decimal
+// 	var balanceErr error
+
+// 	wg.Add(2)
+// 	go func() {
+// 		defer wg.Done()
+// 		decimals, decimalsErr = t.FetchTokenDecimals(ctx)
+// 	}()
+
+// 	go func() {
+// 		defer wg.Done()
+// 		balance, balanceErr = t.GetBalance(ctx, t.OwnerAddress)
+// 	}()
+
+// 	wg.Wait()
+
+// 	if decimalsErr != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get token decimals: %v", decimalsErr)
+// 	}
+
+// 	if balanceErr != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get balance: %v", balanceErr)
+// 	}
+// 	balance = balance.Div(decimal.NewFromInt(10).Pow(decimals))
+// 	if amount.GreaterThan(balance) {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("insufficient token balance. Need %s tokens, have %s tokens",
+// 			amount.String(), balance.String())
+// 	}
+
+// 	amountWithDecimals := amount.Mul(decimal.NewFromInt(10).Pow(decimals))
+// 	amountBigInt := amountWithDecimals.BigInt()
+
+// 	if amountBigInt.Sign() <= 0 {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("amount must be positive")
+// 	}
+
+// 	// 3. Prepare contract call data
+// 	method := "transfer"
+// 	addressType, _ := abi.NewType("address", "", nil)
+// 	uint256Type, _ := abi.NewType("uint256", "", nil)
+// 	arguments := abi.Arguments{
+// 		{Type: addressType},
+// 		{Type: uint256Type},
+// 	}
+
+// 	ethToAddress := common.BytesToAddress(toAddress.Bytes())
+// 	data, err := arguments.Pack(ethToAddress, amountBigInt)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to pack function data for transfer: %v", err)
+// 	}
+
+// 	selector := common_utils.GetFunctionSelector(method + "(address,uint256)")
+// 	callData := append(selector, data...)
+
+// 	// 4. Build transaction
+// 	builder := NewTronTransactionBuilder(t.PrivateKey)
+// 	block, err := t.Client.GetNowBlock2(ctx, &api_tronpb.EmptyMessage{})
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get current block: %v", err)
+// 	}
+// 	builder.SetReferenceBlock(block)
+
+// 	contractData := core_tronpb.TriggerSmartContract{
+// 		OwnerAddress:    t.OwnerAddress.Bytes(),
+// 		ContractAddress: t.ContractAddress.Bytes(),
+// 		Data:            callData,
+// 		CallValue:       0,
+// 	}
+
+// 	builder.contractType = core_tronpb.Transaction_Contract_TriggerSmartContract
+// 	builder.contractData = &contractData
+
+// 	// 5. Estimate energy and set fee limit
+// 	estimateEnergy, err := t.EstimateEnergy(ctx, &contractData)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to estimate energy: %v", err)
+// 	}
+
+// 	chainParams := utils.NewChainParams(t.Client)
+// 	err = chainParams.InitChainParams(ctx)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to initialize chain params: %v", err)
+// 	}
+
+// 	feeLimit, err := t.DetermineFeeLimit(ctx, chainParams, estimateEnergy)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to determine fee limit: %v", err)
+// 	}
+
+// 	builder.SetFeeLimit(feeLimit)
+
+// 	// 6. Build and sign transaction
+// 	tx, err := builder.Build()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to build transaction: %v", err)
+// 	}
+
+// 	_, err = builder.Sign()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to sign transaction: %v", err)
+// 	}
+
+// 	// 7. Calculate required resources
+// 	estimateBandwidth, err := builder.CalculateBandwidth()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to calculate bandwidth: %v", err)
+// 	}
+
+// 	bandwidthCost, energyCost, _, err := t.CalculateResources(ctx, chainParams, t.OwnerAddress, nil, estimateBandwidth, estimateEnergy)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to calculate resources: %v", err)
+// 	}
+
+// 	requiredTRX := bandwidthCost.Add(energyCost)
+
+// 	// 8. Check TRX balance is sufficient for fees
+// 	trxBalance, err := t.GetAccountTRXBalance(ctx, t.OwnerAddress)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get TRX balance: %v", err)
+// 	}
+
+// 	if requiredTRX.GreaterThan(trxBalance) {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("insufficient TRX balance for fees. Need %s TRX, have %s TRX",
+// 			requiredTRX.String(), trxBalance.String())
+// 	}
+
+// 	// 9. Broadcast transaction
+// 	err = t.BroadcastTransaction(ctx, tx)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to broadcast transaction: %v", err)
+// 	}
+
+// 	// 10. Get transaction ID
+// 	txID, err := tron_utils.GetTxID(tx)
+// 	if err != nil {
+// 		fmt.Printf("Warning: transaction broadcasted but failed to get txID: %v\n", err)
+// 		return models.TronWithdrawResponse{TransactionID: "(unknown, check logs)"}, nil
+// 	}
+
+// 	return models.TronWithdrawResponse{
+// 		TransactionID: txID,
+// 	}, nil
+// }

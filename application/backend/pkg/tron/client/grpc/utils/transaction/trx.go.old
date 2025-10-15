@@ -1,0 +1,103 @@
+// package transaction
+
+// import (
+// 	"context"
+// 	"crypto/ecdsa"
+// 	"fiatless/internal/models"
+// 	api_tronpb "fiatless/pkg/proto/tron/api"
+// 	"fiatless/pkg/tron/address"
+// 	"fiatless/pkg/tron/client/grpc/utils"
+// 	tron_utils "fiatless/pkg/utils/tron"
+// 	"fmt"
+
+// 	"github.com/shopspring/decimal"
+// )
+
+// // TRXTransaction handles TRX transfers
+// type TRXTransaction struct {
+// 	*BaseTransaction
+// 	ToAddress *address.TronAddress
+// 	Amount    decimal.Decimal
+// }
+
+// // NewTRXTransaction creates a new TRX transaction
+// func NewTRXTransaction(privateKey *ecdsa.PrivateKey, toAddress *address.TronAddress, amount decimal.Decimal, client *api_tronpb.WalletClient) *TRXTransaction {
+// 	base := NewBaseTransaction(privateKey, client)
+// 	return &TRXTransaction{
+// 		BaseTransaction: base,
+// 		ToAddress:       toAddress,
+// 		Amount:          amount,
+// 	}
+// }
+
+// // Withdraw initiates a TRX transfer
+// func (t *TRXTransaction) Withdraw(ctx context.Context) (models.TronWithdrawResponse, error) {
+// 	// 1. Build transaction
+// 	builder := NewTronTransactionBuilder(t.PrivateKey)
+// 	block, err := t.Client.GetNowBlock2(ctx, nil)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get block: %v", err)
+// 	}
+
+// 	builder.SetReferenceBlock(block)
+// 	tx, err := builder.
+// 		TransferTRX(t.ToAddress, t.Amount).
+// 		Build()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to create transaction: %v", err)
+// 	}
+
+// 	_, err = builder.Sign()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to sign transaction: %v", err)
+// 	}
+
+// 	// 2. Calculate required bandwidth
+// 	txBandwidth, err := builder.CalculateBandwidth()
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to calculate bandwidth: %v", err)
+// 	}
+
+// 	// 3. Calculate fees
+
+// 	chainParams := utils.NewChainParams(t.Client)
+// 	err = chainParams.InitChainParams(ctx)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to initialize chain params: %v", err)
+// 	}
+
+// 	bandwidthCost, _, activationFee, err := t.CalculateResources(ctx, chainParams, t.OwnerAddress, t.ToAddress, txBandwidth, 0)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to calculate resources: %v", err)
+// 	}
+
+// 	// 4. Calculate total cost
+// 	totalCost := t.Amount.Add(activationFee).Add(bandwidthCost)
+
+// 	// 5. Check if balance is sufficient
+// 	accountBalance, err := t.GetAccountTRXBalance(ctx, t.OwnerAddress)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get account balance: %v", err)
+// 	}
+
+// 	if totalCost.GreaterThan(accountBalance) {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("insufficient balance. Need %s TRX, have %s TRX",
+// 			totalCost.String(), accountBalance.String())
+// 	}
+
+// 	// 6. Broadcast transaction
+// 	err = t.BroadcastTransaction(ctx, tx)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to broadcast transaction: %v", err)
+// 	}
+
+// 	// 7. Get transaction ID
+// 	txID, err := tron_utils.GetTxID(tx)
+// 	if err != nil {
+// 		return models.TronWithdrawResponse{}, fmt.Errorf("failed to get transaction ID: %v", err)
+// 	}
+
+// 	return models.TronWithdrawResponse{
+// 		TransactionID: txID,
+// 	}, nil
+// }

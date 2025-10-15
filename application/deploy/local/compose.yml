@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:17.4-alpine3.21
+    environment:
+      - POSTGRES_USER=fiatless
+      - POSTGRES_PASSWORD=fiatless
+      - POSTGRES_DB=fiatless
+    volumes:
+      - fiatless_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  msg-broker:
+    image: lega911/ijson
+    ports:
+      - "8001:8001" 
+
+volumes:
+  fiatless_db_data:

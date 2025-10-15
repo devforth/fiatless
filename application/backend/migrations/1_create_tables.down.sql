@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS wallets_meta;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS tokens;
+DROP TABLE IF EXISTS blockchains;
+DROP TABLE IF EXISTS block_errors;
+DROP TABLE IF EXISTS sweeps;
+DROP TABLE IF EXISTS sweeping_sessions;
+DROP TABLE IF EXISTS admin_users;
