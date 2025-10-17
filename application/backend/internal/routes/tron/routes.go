@@ -151,6 +151,13 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+	} else { // TRX
+		tokenID = constants.GetTRXTokenID(vars.Config.TronNetwork)
+		token, err = vars.Repositories.Token.GetToken(r.Context(), &models.Token{ID: uuid.MustParse(tokenID)})
+		if err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	vars.Repositories.Transaction.CreateTransaction(r.Context(), &models.Transaction{
