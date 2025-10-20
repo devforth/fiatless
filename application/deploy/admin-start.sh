@@ -10,7 +10,5 @@ cd /code/
 export DATABASE_URL="${DATABASE_URL:-postgres://fiatless:fiatless@localhost:5432/fiatless?sslmode=disable}"
 export NODE_ENV="${NODE_ENV:-production}"
 export ADMINFORTH_SECRET="${ADMINFORTH_SECRET:-123}"
-export ADMIN_EMAIL="${ADMIN_EMAIL}"
-export ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 
 npm run prod

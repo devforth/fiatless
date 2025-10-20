@@ -18,8 +18,6 @@ if [ ! -f "$ENV_FILE" ]; then
     DB_NAME=fiatless
     # generate strong random passwords and secrets
     DB_PASSWORD=$(head -c 24 /dev/urandom | base64 | tr -d '\n' | tr -d '=')
-    ADMIN_EMAIL=admin@local
-    ADMIN_PASSWORD=$(head -c 24 /dev/urandom | base64 | tr -d '\n' | tr -d '=')
     ADMINFORTH_SECRET=$(head -c 24 /dev/urandom | base64 | tr -d '\n' | tr -d '=')
     IJSON_ENDPOINT=${IJSON_ENDPOINT:-http://localhost:8001}
     PORT=${PORT:-8080}
@@ -31,8 +29,6 @@ PORT=$PORT
 IJSON_ENDPOINT=$IJSON_ENDPOINT
 DATABASE_DSN=$DATABASE_DSN
 DATABASE_URL=$DATABASE_URL
-ADMIN_EMAIL=$ADMIN_EMAIL
-ADMIN_PASSWORD=$ADMIN_PASSWORD
 ADMINFORTH_SECRET=$ADMINFORTH_SECRET
 EOF
     chmod 600 "$ENV_FILE"

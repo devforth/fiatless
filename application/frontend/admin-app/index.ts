@@ -109,8 +109,8 @@ if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
 
   admin.discoverDatabases().then(async () => {
     if ((await admin.resource("admin_users").count()) === 0) {
-      const email = process.env.ADMIN_EMAIL || "adminforth";
-      const password = process.env.ADMIN_PASSWORD || "adminforth";
+      const email = "adminforth";
+      const password = "adminforth";
       await admin.resource("admin_users").create({
         email,
         password_hash: await AdminForth.Utils.generatePasswordHash(password),
